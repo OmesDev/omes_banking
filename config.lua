@@ -1,10 +1,10 @@
 Config = {}
 
 -- Framework Settings
-Config.Framework = 'qb' -- Options: 'esx', 'qb'
+Config.Framework = 'qb' -- Options: 'esx', 'qb', 'qbx'
 
 -- Notification Settings
-Config.NotificationType = 'ox' -- Options: 'esx', 'ox', 'qb'
+Config.NotificationType = 'ox' -- Options: 'esx', 'ox', 'qb' (IF USING QBX USE 'ox')
 
 -- General Settings
 Config.Locale = 'en'

@@ -5,6 +5,8 @@ if FrameworkName == 'esx' then
     Framework = exports['es_extended']:getSharedObject()
 elseif FrameworkName == 'qb' then
     Framework = exports['qb-core']:GetCoreObject()
+elseif FrameworkName = 'qbx' then
+    Framework = exports.qbx_core
 end
 
 
@@ -13,13 +15,15 @@ local function GetPlayer(source)
         return Framework.GetPlayerFromId(source)
     elseif FrameworkName == 'qb' then
         return Framework.Functions.GetPlayer(source)
+    elseif FrameworkName == 'qbx' then
+        return exports.qbx_core:GetPlayer(source)
     end
 end
 
 local function GetPlayerIdentifier(player)
     if FrameworkName == 'esx' then
         return player.identifier
-    elseif FrameworkName == 'qb' then
+    elseif FrameworkName == 'qb' or FrameworkName == 'qbx' then
         return player.PlayerData.citizenid
     end
 end
@@ -27,7 +31,7 @@ end
 local function GetPlayerName(player)
     if FrameworkName == 'esx' then
         return player.getName()
-    elseif FrameworkName == 'qb' then
+    elseif FrameworkName == 'qb' or FrameworkName == 'qbx' then
         return player.PlayerData.charinfo.firstname .. ' ' .. player.PlayerData.charinfo.lastname
     end
 end
@@ -37,6 +41,8 @@ local function GetPlayerCash(player)
         return player.getMoney()
     elseif FrameworkName == 'qb' then
         return player.PlayerData.money.cash
+    elseif FrameworkName == 'qbx' then
+        return exports.qbx_core:GetMoney(player, 'cash')
     end
 end
 
@@ -45,6 +51,8 @@ local function GetPlayerBank(player)
         return player.getAccount('bank').money
     elseif FrameworkName == 'qb' then
         return player.PlayerData.money.bank
+    elseif FrameworkName == 'qbx' then
+        return exports.qbx_core:GetMoney(player, 'bank')
     end
 end
 
@@ -53,6 +61,8 @@ local function AddPlayerCash(player, amount)
         player.addMoney(amount)
     elseif FrameworkName == 'qb' then
         player.Functions.AddMoney('cash', amount)
+    elseif FrameworkName == 'qbx' then
+        exports.qbx_core:AddMoney(player, 'cash', amount)
     end
 end
 
@@ -61,6 +71,8 @@ local function RemovePlayerCash(player, amount)
         player.removeMoney(amount)
     elseif FrameworkName == 'qb' then
         player.Functions.RemoveMoney('cash', amount)
+    elseif FrameworkName == 'qbx' then
+        exports.qbx_core:RemoveMoney(player, 'cash', amount)
     end
 end
 
@@ -69,6 +81,8 @@ local function AddPlayerBank(player, amount)
         player.addAccountMoney('bank', amount)
     elseif FrameworkName == 'qb' then
         player.Functions.AddMoney('bank', amount)
+    elseif FrameworkName == 'qbx' then
+        exports.qbx_core:AddMoney(player, 'bank', amount)
     end
 end
 
@@ -77,6 +91,8 @@ local function RemovePlayerBank(player, amount)
         player.removeAccountMoney('bank', amount)
     elseif FrameworkName == 'qb' then
         player.Functions.RemoveMoney('bank', amount)
+    elseif FrameworkName == 'qbx' then
+        exports.qbx_core:RemoveMoney(player, 'bank', amount)
     end
 end
 
@@ -85,6 +101,8 @@ local function RegisterCallback(name, callback)
         Framework.RegisterServerCallback(name, callback)
     elseif FrameworkName == 'qb' then
         Framework.Functions.CreateCallback(name, callback)
+    elseif FrameworkName == 'qbx' then
+        lib.callback.register(name, callback)
     end
 end
 
@@ -93,6 +111,12 @@ local function RegisterCommand(name, permission, callback, restricted, suggestio
         Framework.RegisterCommand(name, permission, callback, restricted, suggestion)
     elseif FrameworkName == 'qb' then
         Framework.Commands.Add(name, suggestion.help, {}, restricted, callback, permission)
+    elseif FrameworkName == 'qbx' then
+        lib.addCommand(name, {
+            help = suggestion.help,
+            restricted = restricted or false,
+            params = suggestion.params or {}
+        }, callback)
     end
 end
 
@@ -109,6 +133,8 @@ local function FormatMoney(amount)
             end
         end
         return formatted
+    elseif FrameworkName == 'qbx' then
+        return lib.math.groupdigits(amount)
     end
 end
 
@@ -116,7 +142,7 @@ end
 function SendNotification(source, message, type)
     type = type or 'info'
     
-    if Config.NotificationType == 'ox' then
+    if Config.NotificationType == 'ox' or Config.NotificationType == 'qbx' then
 
         TriggerClientEvent('ox_lib:notify', source, {
             title = 'Banking',
@@ -553,8 +579,14 @@ elseif FrameworkName == 'qb' then
     Framework.Commands.Add('bank', 'Open banking interface', {}, false, function(source, args)
         TriggerClientEvent('omes_banking:openUI', source)
     end, 'user')
+elseif FrameworkName == 'qbx' then
+    lib.addCommand('bank', {
+        help = 'Open banking interface',
+        restricted = false
+    }, function(source, args)
+        TriggerClientEvent('omes_banking:openUI', source)
+    end)
 end
-
 
 RegisterServerEvent('omes_banking:openSavingsAccount')
 AddEventHandler('omes_banking:openSavingsAccount', function()

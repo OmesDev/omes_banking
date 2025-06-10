@@ -5,11 +5,13 @@ if FrameworkName == 'esx' then
     Framework = exports['es_extended']:getSharedObject()
 elseif FrameworkName == 'qb' then
     Framework = exports['qb-core']:GetCoreObject()
+elseif FrameworkName == 'qbx' then
+    Framework = exports.qbx_core
 end
 
 
 local function ShowNotification(message, type)
-    if Config.NotificationType == 'ox' then
+    if Config.NotificationType == 'ox' or Config.NotificationType == 'qbx' then
         exports.ox_lib:notify({
             title = 'Banking',
             description = message,
@@ -34,6 +36,8 @@ local function ShowHelpNotification(message)
             AddTextComponentSubstringPlayerName(message)
             EndTextCommandDisplayHelp(0, false, true, -1)
         end
+    elseif FrameworkName == 'qbx' then
+        lib.showTextUI(message)
     end
     isShowingHelpText = true
 end
@@ -44,6 +48,8 @@ local function HideHelpNotification()
             if exports['qb-core'] and exports['qb-core'].HideText then
                 exports['qb-core']:HideText()
             end
+        elseif FrameworkName == 'qbx' then
+            lib.hideTextUI()
         end
         isShowingHelpText = false
     end
@@ -54,6 +60,8 @@ local function TriggerServerCallback(name, callback, ...)
         Framework.TriggerServerCallback(name, callback, ...)
     elseif FrameworkName == 'qb' then
         Framework.Functions.TriggerCallback(name, callback, ...)
+    elseif FrameworkName == 'qbx' then
+        lib.callback(name, false, callback, ...)
     end
 end
 

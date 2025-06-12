@@ -58,6 +58,7 @@ local function TriggerServerCallback(name, callback, ...)
 end
 
 local bankerPed = nil
+local bankerPeds = {}
 local bankingOpen = false
 local nearbyATMs = {}
 local isUsingATM = false

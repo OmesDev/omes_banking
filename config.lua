@@ -7,7 +7,6 @@ Config.Framework = 'qb' -- Options: 'esx', 'qb'
 Config.NotificationType = 'ox' -- Options: 'esx', 'ox', 'qb'
 
 -- General Settings
-Config.Locale = 'en'
 Config.BankName = 'Fleeca Bank' -- Configurable bank name displayed in UI
 
 -- Blip Configuration

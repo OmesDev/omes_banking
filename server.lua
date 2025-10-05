@@ -7,6 +7,20 @@ elseif FrameworkName == 'qb' then
     Framework = exports['qb-core']:GetCoreObject()
 end
 
+-- Translation function
+local function GetTranslation(key, ...)
+    local lang = Config.DefaultLanguage or 'en'
+    local translations = Config.Translations[lang] or Config.Translations['en']
+    local translation = translations[key] or Config.Translations['en'][key] or key
+    
+    -- Handle string formatting if arguments are provided
+    if ... then
+        return string.format(translation, ...)
+    end
+    
+    return translation
+end
+
 
 local function GetPlayer(source)
     if FrameworkName == 'esx' then
@@ -119,7 +133,7 @@ function SendNotification(source, message, type)
     if Config.NotificationType == 'ox' then
 
         TriggerClientEvent('ox_lib:notify', source, {
-            title = 'Banking',
+            title = GetTranslation('bank_name'),
             description = message,
             type = type,
             duration = 5000
@@ -326,27 +340,27 @@ AddEventHandler('omes_banking:deposit', function(amount)
     
     amount = tonumber(amount)
     if not amount or amount <= 0 then
-        SendNotification(source, 'Invalid amount', 'error')
+        SendNotification(source, GetTranslation('invalid_amount'), 'error')
         return
     end
     
     if amount > Config.Banking.maxTransferAmount then
-        SendNotification(source, 'Amount exceeds maximum limit', 'error')
+        SendNotification(source, GetTranslation('maximum_amount', FormatMoney(Config.Banking.maxTransferAmount)), 'error')
         return
     end
     
     local cashMoney = GetPlayerCash(xPlayer)
     if cashMoney < amount then
-        SendNotification(source, 'Insufficient cash', 'error')
+        SendNotification(source, GetTranslation('insufficient_funds'), 'error')
         return
     end
     
     RemovePlayerCash(xPlayer, amount)
     AddPlayerBank(xPlayer, amount)
     
-    SendNotification(source, 'Deposited $' .. FormatMoney(amount), 'success')
+    SendNotification(source, GetTranslation('transaction_completed'), 'success')
     
-    LogTransaction(GetPlayerIdentifier(xPlayer), 'deposit', amount, 'Cash deposit')
+    LogTransaction(GetPlayerIdentifier(xPlayer), 'deposit', amount, GetTranslation('deposit'))
     
     SendDiscordLog('deposits', '💰 Cash Deposit', 
         'A player has made a cash deposit to their bank account.',
@@ -380,27 +394,27 @@ AddEventHandler('omes_banking:withdraw', function(amount)
     
     amount = tonumber(amount)
     if not amount or amount <= 0 then
-        SendNotification(source, 'Invalid amount', 'error')
+        SendNotification(source, GetTranslation('invalid_amount'), 'error')
         return
     end
     
     if amount > Config.Banking.maxTransferAmount then
-        SendNotification(source, 'Amount exceeds maximum limit', 'error')
+        SendNotification(source, GetTranslation('maximum_amount', FormatMoney(Config.Banking.maxTransferAmount)), 'error')
         return
     end
     
     local bankMoney = GetPlayerBank(xPlayer)
     if bankMoney < amount then
-        SendNotification(source, 'Insufficient funds', 'error')
+        SendNotification(source, GetTranslation('insufficient_funds'), 'error')
         return
     end
     
     RemovePlayerBank(xPlayer, amount)
     AddPlayerCash(xPlayer, amount)
     
-    SendNotification(source, 'Withdrew $' .. FormatMoney(amount), 'success')
+    SendNotification(source, GetTranslation('transaction_completed'), 'success')
     
-    LogTransaction(GetPlayerIdentifier(xPlayer), 'withdrawal', amount, 'Cash withdrawal')
+    LogTransaction(GetPlayerIdentifier(xPlayer), 'withdrawal', amount, GetTranslation('withdraw'))
     
     SendDiscordLog('withdrawals', '💸 Cash Withdrawal', 
         'A player has withdrawn cash from their bank account.',
@@ -435,7 +449,7 @@ AddEventHandler('omes_banking:transfer', function(targetId, amount, description)
     
     amount = tonumber(amount)
     if not amount or amount <= 0 then
-        SendNotification(source, 'Invalid amount', 'error')
+        SendNotification(source, GetTranslation('invalid_amount'), 'error')
         return
     end
     
@@ -445,17 +459,17 @@ AddEventHandler('omes_banking:transfer', function(targetId, amount, description)
     end
     
     if amount > Config.Banking.maxTransferAmount then
-        SendNotification(source, 'Amount exceeds maximum limit', 'error')
+        SendNotification(source, GetTranslation('maximum_amount', FormatMoney(Config.Banking.maxTransferAmount)), 'error')
         return
     end
     
     if not xTarget then
-        SendNotification(source, 'Player not found', 'error')
+        SendNotification(source, GetTranslation('player_not_found'), 'error')
         return
     end
     
     if source == targetId then
-        SendNotification(source, 'Cannot transfer to yourself', 'error')
+        SendNotification(source, GetTranslation('self_transfer'), 'error')
         return
     end
     
@@ -479,8 +493,8 @@ AddEventHandler('omes_banking:transfer', function(targetId, amount, description)
     SendNotification(source, senderMsg, 'success')
     SendNotification(targetId, 'Received $' .. FormatMoney(amount) .. ' from ' .. GetPlayerName(xPlayer), 'success')
     
-    LogTransaction(GetPlayerIdentifier(xPlayer), 'transfer_out', amount, 'Transfer to ' .. GetPlayerName(xTarget) .. ': ' .. (description or 'No description'))
-    LogTransaction(GetPlayerIdentifier(xTarget), 'transfer_in', amount, 'Transfer from ' .. GetPlayerName(xPlayer) .. ': ' .. (description or 'No description'))
+    LogTransaction(GetPlayerIdentifier(xPlayer), 'transfer_out', amount, GetTranslation('transfer') .. ' ' .. GetPlayerName(xTarget) .. ': ' .. (description or GetTranslation('transfer')))
+    LogTransaction(GetPlayerIdentifier(xTarget), 'transfer_in', amount, GetTranslation('transfer') .. ' ' .. GetPlayerName(xPlayer) .. ': ' .. (description or GetTranslation('transfer')))
     
     SendDiscordLog('transfers', '💳 Bank Transfer', 
         'A player has transferred money to another player.',
@@ -525,7 +539,7 @@ AddEventHandler('omes_banking:transfer', function(targetId, amount, description)
     )
     
     if transferFee > 0 then
-        LogTransaction(GetPlayerIdentifier(xPlayer), 'fee', transferFee, 'Transfer fee')
+        LogTransaction(GetPlayerIdentifier(xPlayer), 'fee', transferFee, GetTranslation('transfer_fee', FormatMoney(transferFee)))
     end
 end)
 
@@ -588,7 +602,7 @@ AddEventHandler('omes_banking:openSavingsAccount', function()
             }, function(rowsChanged)
                 if rowsChanged > 0 then
                     SendNotification(source, 'Savings account reactivated successfully!', 'success')
-                    LogTransaction(identifier, 'savings_opened', 0, 'Savings account reactivated')
+                    LogTransaction(identifier, 'savings_opened', 0, GetTranslation('savings_created'))
                     
 
                     SendDiscordLog('accountOperations', '🏦 Savings Account Reactivated', 
@@ -616,7 +630,7 @@ AddEventHandler('omes_banking:openSavingsAccount', function()
             }, function(rowsChanged)
                 if rowsChanged > 0 then
                     SendNotification(source, 'Savings account opened successfully!', 'success')
-                    LogTransaction(identifier, 'savings_opened', 0, 'New savings account opened')
+                    LogTransaction(identifier, 'savings_opened', 0, GetTranslation('savings_created'))
                     
 
                     SendDiscordLog('accountOperations', '🏦 New Savings Account Opened', 
@@ -659,12 +673,12 @@ AddEventHandler('omes_banking:depositSavings', function(amount)
     
     amount = tonumber(amount)
     if not amount or amount <= 0 then
-        SendNotification(source, 'Invalid amount', 'error')
+        SendNotification(source, GetTranslation('invalid_amount'), 'error')
         return
     end
     
     if amount > Config.Banking.maxTransferAmount then
-        SendNotification(source, 'Amount exceeds maximum limit', 'error')
+        SendNotification(source, GetTranslation('maximum_amount', FormatMoney(Config.Banking.maxTransferAmount)), 'error')
         return
     end
     
@@ -692,7 +706,7 @@ AddEventHandler('omes_banking:depositSavings', function(amount)
         }, function(rowsChanged)
             if rowsChanged > 0 then
                 SendNotification(source, 'Deposited $' .. FormatMoney(amount) .. ' to savings account', 'success')
-                LogTransaction(identifier, 'savings_deposit', amount, 'Deposit to savings account')
+                LogTransaction(identifier, 'savings_deposit', amount, GetTranslation('deposit_savings'))
             end
         end)
     end)
@@ -716,12 +730,12 @@ AddEventHandler('omes_banking:withdrawSavings', function(amount)
     
     amount = tonumber(amount)
     if not amount or amount <= 0 then
-        SendNotification(source, 'Invalid amount', 'error')
+        SendNotification(source, GetTranslation('invalid_amount'), 'error')
         return
     end
     
     if amount > Config.Banking.maxTransferAmount then
-        SendNotification(source, 'Amount exceeds maximum limit', 'error')
+        SendNotification(source, GetTranslation('maximum_amount', FormatMoney(Config.Banking.maxTransferAmount)), 'error')
         return
     end
     
@@ -747,7 +761,7 @@ AddEventHandler('omes_banking:withdrawSavings', function(amount)
             if rowsChanged > 0 then
                 AddPlayerBank(xPlayer, amount)
                 SendNotification(source, 'Transferred $' .. FormatMoney(amount) .. ' from savings to checking account', 'success')
-                LogTransaction(identifier, 'savings_withdrawal', amount, 'Withdrawal from savings account')
+                LogTransaction(identifier, 'savings_withdrawal', amount, GetTranslation('withdraw_savings'))
             end
         end)
     end)
@@ -771,12 +785,12 @@ AddEventHandler('omes_banking:transferBetweenAccounts', function(fromAccount, to
     
     amount = tonumber(amount)
     if not amount or amount <= 0 then
-        SendNotification(source, 'Invalid amount', 'error')
+        SendNotification(source, GetTranslation('invalid_amount'), 'error')
         return
     end
     
     if amount > Config.Banking.maxTransferAmount then
-        SendNotification(source, 'Amount exceeds maximum limit', 'error')
+        SendNotification(source, GetTranslation('maximum_amount', FormatMoney(Config.Banking.maxTransferAmount)), 'error')
         return
     end
     
@@ -810,7 +824,7 @@ AddEventHandler('omes_banking:transferBetweenAccounts', function(fromAccount, to
             }, function(rowsChanged)
                 if rowsChanged > 0 then
                     SendNotification(source, 'Transferred $' .. FormatMoney(amount) .. ' from checking to savings', 'success')
-                    LogTransaction(identifier, 'account_transfer', amount, 'Transfer from checking to savings')
+                    LogTransaction(identifier, 'account_transfer', amount, GetTranslation('deposit_savings'))
                     
 
                     SendDiscordLog('savingsOperations', '💰 Account Transfer', 
@@ -856,7 +870,7 @@ AddEventHandler('omes_banking:transferBetweenAccounts', function(fromAccount, to
                 if rowsChanged > 0 then
                     AddPlayerBank(xPlayer, amount)
                     SendNotification(source, 'Transferred $' .. FormatMoney(amount) .. ' from savings to checking', 'success')
-                    LogTransaction(identifier, 'account_transfer', amount, 'Transfer from savings to checking')
+                    LogTransaction(identifier, 'account_transfer', amount, GetTranslation('withdraw_savings'))
                     
 
                     SendDiscordLog('savingsOperations', '💰 Account Transfer', 
@@ -933,7 +947,7 @@ AddEventHandler('omes_banking:closeSavingsAccount', function()
 
         if savingsBalance > 0 then
             AddPlayerBank(xPlayer, savingsBalance)
-            LogTransaction(identifier, 'account_transfer', savingsBalance, 'Savings account closure - transferred to checking')
+            LogTransaction(identifier, 'account_transfer', savingsBalance, GetTranslation('withdraw_savings'))
             print(string.format('[BANKING] Transferred %s from savings to checking for %s', savingsBalance, identifier))
         end
         
@@ -951,7 +965,7 @@ AddEventHandler('omes_banking:closeSavingsAccount', function()
                     message = message .. '. $' .. FormatMoney(savingsBalance) .. ' transferred to checking account'
                 end
                 SendNotification(source, message, 'success')
-                LogTransaction(identifier, 'savings_closed', 0, 'Savings account closed')
+                LogTransaction(identifier, 'savings_closed', 0, GetTranslation('savings_account'))
                 
 
                 SendDiscordLog('accountOperations', '🏦 Savings Account Closed', 
@@ -1710,19 +1724,3 @@ exports('HasEnoughCash', function(source, amount)
     return GetPlayerCash(xPlayer) >= amount
 end)
 
-print('[BANKING] Exports loaded successfully!')
-print('[BANKING] Available exports:')
-print('  - AddBankMoney(source, amount, description)')
-print('  - RemoveBankMoney(source, amount, description)')
-print('  - AddCashMoney(source, amount, description)')
-print('  - RemoveCashMoney(source, amount, description)')
-print('  - GetPlayerAccount(source)')
-print('  - GetBankBalance(source)')
-print('  - GetCashBalance(source)')
-print('  - TransferMoney(fromSource, toSource, amount, description)')
-print('  - GetSavingsAccount(source, callback)')
-print('  - AddSavingsMoney(source, amount, description)')
-print('  - LogCustomTransaction(source, type, amount, description)')
-print('  - OpenBankingUI(source)')
-print('  - HasEnoughBank(source, amount)')
-print('  - HasEnoughCash(source, amount)')

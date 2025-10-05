@@ -7,11 +7,91 @@ elseif FrameworkName == 'qb' then
     Framework = exports['qb-core']:GetCoreObject()
 end
 
+-- Translation function
+local function GetTranslation(key, ...)
+    local lang = Config.DefaultLanguage or 'en'
+    local translations = Config.Translations[lang] or Config.Translations['en']
+    local translation = translations[key] or Config.Translations['en'][key] or key
+    
+    -- Handle string formatting if arguments are provided
+    if ... then
+        return string.format(translation, ...)
+    end
+    
+    return translation
+end
+
+-- Function to translate historical transaction descriptions
+local function TranslateTransactionDescription(description)
+    if not description then return description end
+    
+    -- Map of English transaction descriptions to translation keys
+    local translationMap = {
+        ['Cash deposit'] = 'deposit',
+        ['Cash withdrawal'] = 'withdraw', 
+        ['Savings account created'] = 'savings_created',
+        ['Savings account reactivated'] = 'savings_created',
+        ['New savings account opened'] = 'savings_created',
+        ['Deposit to savings account'] = 'deposit_savings',
+        ['Withdrawal from savings account'] = 'withdraw_savings',
+        ['Transfer from checking to savings'] = 'deposit_savings',
+        ['Transfer from savings to checking'] = 'withdraw_savings',
+        ['Savings account closure - transferred to checking'] = 'withdraw_savings',
+        ['Savings account closed'] = 'savings_account',
+        ['Transfer fee'] = 'transfer_fee'
+    }
+    
+    -- Check for exact matches first
+    if translationMap[description] then
+        return GetTranslation(translationMap[description])
+    end
+    
+    -- Check for partial matches (like transfer descriptions with player names)
+    if string.find(description, 'Transfer to') then
+        local playerName = string.match(description, 'Transfer to ([^:]+)')
+        if playerName then
+            return GetTranslation('transfer') .. ' ' .. playerName
+        end
+    elseif string.find(description, 'Transfer from') then
+        local playerName = string.match(description, 'Transfer from ([^:]+)')
+        if playerName then
+            return GetTranslation('transfer') .. ' ' .. playerName
+        end
+    end
+    
+    -- Return original description if no translation found
+    return description
+end
+
+-- Helper function to update banking data with translated transactions
+local function UpdateBankingData()
+    TriggerServerCallback('omes_banking:getPlayerData', function(playerData)
+        TriggerServerCallback('omes_banking:getTransactionHistory', function(transactions)
+            TriggerServerCallback('omes_banking:getBalanceHistory', function(balanceHistory)
+                
+                -- Translate transaction descriptions
+                for i, transaction in ipairs(transactions) do
+                    if transaction.description then
+                        transactions[i].description = TranslateTransactionDescription(transaction.description)
+                    end
+                end
+                
+                SendNUIMessage({
+                    type = 'updateBankingData',
+                    playerData = playerData,
+                    transactions = transactions,
+                    balanceHistory = balanceHistory
+                })
+            end)
+        end)
+    end)
+end
+
 
 local function ShowNotification(message, type)
     if Config.NotificationType == 'ox' then
         exports.ox_lib:notify({
-            title = 'Banking',
+            title = GetTranslation('bank_name'),
             description = message,
             type = type or 'info',
             duration = 5000
@@ -131,12 +211,21 @@ function OpenBankingUI()
     TriggerServerCallback('omes_banking:getPlayerData', function(playerData)
         TriggerServerCallback('omes_banking:getTransactionHistory', function(transactions)
             TriggerServerCallback('omes_banking:getBalanceHistory', function(balanceHistory)
+                
+                -- Translate transaction descriptions
+                for i, transaction in ipairs(transactions) do
+                    if transaction.description then
+                        transactions[i].description = TranslateTransactionDescription(transaction.description)
+                    end
+                end
+                
         SendNUIMessage({
             type = 'openBank',
             playerData = playerData,
-                    bankName = Config.BankName,
+                    bankName = GetTranslation('bank_name'),
                     transactions = transactions,
-                    balanceHistory = balanceHistory
+                    balanceHistory = balanceHistory,
+                    translations = Config.Translations[Config.DefaultLanguage] or Config.Translations['en']
         })
             end)
         end)
@@ -161,7 +250,7 @@ function HandleATMAccess()
     
     TriggerServerCallback('omes_banking:getPlayerData', function(playerData)
         if not playerData.hasPin then
-            ShowNotification('You need to set up a PIN at a bank first', 'error')
+            ShowNotification(GetTranslation('pin_required'), 'error')
             isUsingATM = false
             return
         end
@@ -186,7 +275,7 @@ function CreateBankBlips()
         SetBlipColour(blip, Config.Blips.color)
         SetBlipAsShortRange(blip, Config.Blips.shortRange)
         BeginTextCommandSetBlipName("STRING")
-        AddTextComponentString(Config.BankName)
+        AddTextComponentString(GetTranslation('bank_name'))
         EndTextCommandSetBlipName(blip)
     end
 end
@@ -229,18 +318,7 @@ RegisterNUICallback('transfer', function(data, cb)
     
 
     Citizen.Wait(500)
-    TriggerServerCallback('omes_banking:getPlayerData', function(playerData)
-        TriggerServerCallback('omes_banking:getTransactionHistory', function(transactions)
-            TriggerServerCallback('omes_banking:getBalanceHistory', function(balanceHistory)
-                SendNUIMessage({
-                    type = 'updateBankingData',
-                    playerData = playerData,
-                    transactions = transactions,
-                    balanceHistory = balanceHistory
-                })
-            end)
-        end)
-    end)
+    UpdateBankingData()
     
     cb('ok')
 end)
@@ -250,18 +328,7 @@ RegisterNUICallback('deposit', function(data, cb)
     
 
     Citizen.Wait(500)
-    TriggerServerCallback('omes_banking:getPlayerData', function(playerData)
-        TriggerServerCallback('omes_banking:getTransactionHistory', function(transactions)
-            TriggerServerCallback('omes_banking:getBalanceHistory', function(balanceHistory)
-                SendNUIMessage({
-                    type = 'updateBankingData',
-                    playerData = playerData,
-                    transactions = transactions,
-                    balanceHistory = balanceHistory
-                })
-            end)
-        end)
-    end)
+    UpdateBankingData()
     
     cb('ok')
 end)
@@ -271,23 +338,16 @@ RegisterNUICallback('withdraw', function(data, cb)
     
 
     Citizen.Wait(500)
-    TriggerServerCallback('omes_banking:getPlayerData', function(playerData)
-        TriggerServerCallback('omes_banking:getTransactionHistory', function(transactions)
-            TriggerServerCallback('omes_banking:getBalanceHistory', function(balanceHistory)
-                SendNUIMessage({
-                    type = 'updateBankingData',
-                    playerData = playerData,
-                    transactions = transactions,
-                    balanceHistory = balanceHistory
-                })
-            end)
-        end)
-    end)
+    UpdateBankingData()
     
     cb('ok')
 end)
 
 RegisterNUICallback('openSavingsAccount', function(data, cb)
+    if not Config.Banking.allowSavingsAccounts then
+        cb('ok')
+        return
+    end
     TriggerServerEvent('omes_banking:openSavingsAccount')
     
 
@@ -309,64 +369,43 @@ RegisterNUICallback('openSavingsAccount', function(data, cb)
 end)
 
 RegisterNUICallback('depositSavings', function(data, cb)
+    if not Config.Banking.allowSavingsAccounts then
+        cb('ok')
+        return
+    end
     TriggerServerEvent('omes_banking:depositSavings', data.amount)
     
 
     Citizen.Wait(500)
-    TriggerServerCallback('omes_banking:getPlayerData', function(playerData)
-        TriggerServerCallback('omes_banking:getTransactionHistory', function(transactions)
-            TriggerServerCallback('omes_banking:getBalanceHistory', function(balanceHistory)
-                SendNUIMessage({
-                    type = 'updateBankingData',
-                    playerData = playerData,
-                    transactions = transactions,
-                    balanceHistory = balanceHistory
-                })
-            end)
-        end)
-    end)
+    UpdateBankingData()
     
     cb('ok')
 end)
 
 RegisterNUICallback('withdrawSavings', function(data, cb)
+    if not Config.Banking.allowSavingsAccounts then
+        cb('ok')
+        return
+    end
     TriggerServerEvent('omes_banking:withdrawSavings', data.amount)
     
 
     Citizen.Wait(500)
-    TriggerServerCallback('omes_banking:getPlayerData', function(playerData)
-        TriggerServerCallback('omes_banking:getTransactionHistory', function(transactions)
-            TriggerServerCallback('omes_banking:getBalanceHistory', function(balanceHistory)
-                SendNUIMessage({
-                    type = 'updateBankingData',
-                    playerData = playerData,
-                    transactions = transactions,
-                    balanceHistory = balanceHistory
-                })
-            end)
-        end)
-    end)
+    UpdateBankingData()
     
     cb('ok')
 end)
 
 RegisterNUICallback('transferBetweenAccounts', function(data, cb)
+    if not Config.Banking.allowSavingsAccounts and (data.fromAccount == 'savings' or data.toAccount == 'savings') then
+        cb('ok')
+        return
+    end
     TriggerServerEvent('omes_banking:transferBetweenAccounts', data.fromAccount, data.toAccount, data.amount)
     
 
     Citizen.Wait(500)
-    TriggerServerCallback('omes_banking:getPlayerData', function(playerData)
-        TriggerServerCallback('omes_banking:getTransactionHistory', function(transactions)
-            TriggerServerCallback('omes_banking:getBalanceHistory', function(balanceHistory)
-                SendNUIMessage({
-                    type = 'updateBankingData',
-                    playerData = playerData,
-                    transactions = transactions,
-                    balanceHistory = balanceHistory
-                })
-            end)
-        end)
-    end)
+    UpdateBankingData()
     
     cb('ok')
 end)
@@ -389,6 +428,10 @@ RegisterNUICallback('getPlayerData', function(data, cb)
 end)
 
 RegisterNUICallback('closeSavingsAccount', function(data, cb)
+    if not Config.Banking.allowSavingsAccounts then
+        cb('ok')
+        return
+    end
     TriggerServerEvent('omes_banking:closeSavingsAccount')
     cb('ok')
 end)
@@ -401,14 +444,23 @@ function OpenATMUI()
     TriggerServerCallback('omes_banking:getPlayerData', function(playerData)
         TriggerServerCallback('omes_banking:getTransactionHistory', function(transactions)
             TriggerServerCallback('omes_banking:getBalanceHistory', function(balanceHistory)
+                
+                -- Translate transaction descriptions
+                for i, transaction in ipairs(transactions) do
+                    if transaction.description then
+                        transactions[i].description = TranslateTransactionDescription(transaction.description)
+                    end
+                end
+                
                 SetNuiFocus(true, true)
                 SendNUIMessage({
                     type = 'openBank',
                     playerData = playerData,
-                    bankName = Config.BankName,
+                    bankName = GetTranslation('bank_name'),
                     transactions = transactions,
                     balanceHistory = balanceHistory,
-                    isATM = true
+                    isATM = true,
+                    translations = Config.Translations[Config.DefaultLanguage] or Config.Translations['en']
                 })
             end)
         end)
@@ -518,7 +570,7 @@ Citizen.CreateThread(function()
                 if distance < Config.Interaction.distance then
                     sleep = 0
                     canInteract = true
-                    ShowHelpNotification(Config.Interaction.helpText)
+                    ShowHelpNotification(GetTranslation('press_to_access'))
                     
                     if IsControlJustReleased(0, Config.Interaction.key) then
                         OpenBankingUI()
@@ -540,7 +592,7 @@ Citizen.CreateThread(function()
                 if atm.distance <= Config.ATM.interactionDistance then
                     sleep = 0
                     canInteract = true
-                    ShowHelpNotification('Press [E] to use ATM')
+                    ShowHelpNotification(GetTranslation('atm_access'))
                     
                     if IsControlJustReleased(0, Config.Interaction.key) then
                         HandleATMAccess()

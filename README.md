@@ -1,10 +1,16 @@
 # OMES Banking System
 
-Showcase: https://youtu.be/4Ei3ub9WfrE
-
-Discord: https://discord.gg/dATEunPQ2t
-
 A comprehensive banking system for FiveM servers that supports both ESX and QB Core frameworks.
+
+
+Update your police job to use omes_banking instead of qb-banking. You'll need to find this line in your police job server files:
+
+exports['qb-banking']:AddMoney(source, 'bank', amount, reason)
+
+And change it to:
+
+exports['omes_banking']:AddMoney(source, 'bank', amount, reason)
+
 
 ## Features
 
@@ -15,7 +21,7 @@ A comprehensive banking system for FiveM servers that supports both ESX and QB C
 - **Transaction History**: Track all banking transactions
 - **Balance Charts**: Visual representation of balance history
 - **Notification System**: Supports ESX, QB Core, and OX Lib notifications
-- **Multi-language Support**: Configurable locale system
+- **Multi-language Support**: Supports 6 languages with easy expansion system
 
 ## Installation
 
@@ -41,6 +47,22 @@ Choose your notification system:
 ```lua
 Config.NotificationType = 'ox' -- Options: 'esx', 'ox'
 ```
+
+### Language Configuration
+
+The banking system supports multiple languages. Set your preferred language:
+
+```lua
+Config.DefaultLanguage = 'en' -- Options: 'en', 'es', 'fr', 'ar', 'de', 'pt'
+```
+
+**Available Languages:**
+- **English** (`en`) - Default language
+- **Spanish** (`es`) - Español
+- **French** (`fr`) - Français  
+- **Arabic** (`ar`) - العربية
+- **German** (`de`) - Deutsch
+- **Portuguese** (`pt`) - Português
 
 ### Banking Settings
 
@@ -109,6 +131,48 @@ CREATE TABLE IF NOT EXISTS `banking_pins` (
 ## Commands
 
 - `/bank` - Opens the banking interface (admin/testing)
+
+## Adding New Languages
+
+To add a new language to the banking system:
+
+1. **Open `config.lua`** and locate the `Config.Translations` table
+2. **Add your language code** to the `Config.DefaultLanguage` comment options
+3. **Create a new translation table** following this structure:
+
+```lua
+['your_lang_code'] = {
+    -- General
+    ['bank_name'] = 'Your Bank Name',
+    ['welcome'] = 'Welcome Message',
+    ['balance'] = 'Balance',
+    ['account'] = 'Account',
+    ['amount'] = 'Amount',
+    ['confirm'] = 'Confirm',
+    ['cancel'] = 'Cancel',
+    ['close'] = 'Close',
+    -- ... (continue with all translation keys)
+}
+```
+
+4. **Copy all translation keys** from the English (`en`) section to ensure completeness
+5. **Translate each value** to your target language
+6. **Update the default language** in config if desired:
+
+```lua
+Config.DefaultLanguage = 'your_lang_code'
+```
+
+**Translation Keys Include:**
+- General UI elements (buttons, labels, messages)
+- Account management terms
+- Transaction types and messages
+- ATM and PIN related text
+- Savings account terminology
+- Admin panel text
+- Error messages and notifications
+
+**Note:** The system automatically falls back to English if a translation key is missing in your selected language.
 
 ## Dependencies
 

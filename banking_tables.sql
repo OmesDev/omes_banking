@@ -1,3 +1,6 @@
+-- OMES Banking System Database Tables
+-- Compatible with both ESX and QB Core frameworks
+
 -- Banking transactions table
 CREATE TABLE IF NOT EXISTS `banking_transactions` (
     `id` int(11) NOT NULL AUTO_INCREMENT,
